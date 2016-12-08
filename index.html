@@ -30,9 +30,9 @@
   <body>
     <script type="text/javascript" src="http://d3js.org/d3.v2.min.js?2.9.6"></script>
     <script type="text/javascript">
-     let width = 280,
-        height = 280,
-        margin = 50,
+     let width = 400,
+        height = 400,
+        margin = 170,
         outerRadius = Math.min(width - margin, height - margin) / 2,  
         innerRadius = Math.min(width - margin, height - margin) / 8,  
         colors = d3.scale.category20(),
@@ -65,13 +65,13 @@
 //-110,90
 //-90,190
 //0,230
-circles.push({"tx":50,"ty":10,"color":"white"});
-circles.push({"tx":-50,"ty":10,"color":"white"});
-circles.push({"tx":110,"ty":90,"color":"white"});
-circles.push({"tx":-110,"ty":90,"color":"white"});
-circles.push({"tx":90,"ty":190,"color":"white"});
-circles.push({"tx":-90,"ty":190,"color":"white"});
-circles.push({"tx":0,"ty":230,"color":"white"});
+circles.push({"tx":50,"ty":10,"color":"white","text":"Test 7"});
+circles.push({"tx":-50,"ty":10,"color":"white","text":"Test 5"});
+circles.push({"tx":110,"ty":90,"color":"white","text":"Test 6"});
+circles.push({"tx":-110,"ty":90,"color":"white","text":"Test1"});
+circles.push({"tx":90,"ty":190,"color":"white","text":"Test 2"});
+circles.push({"tx":-90,"ty":190,"color":"white","text":"Test 4"});
+circles.push({"tx":0,"ty":230,"color":"white","text":"Test 5"});
 
 let arc = d3.svg.arc()
 .innerRadius(innerRadius)
@@ -125,13 +125,37 @@ svg.selectAll("text")
 .attr("fill", "red")
 .attr("transform", function(d){return "translate(" + d.tx + "," + d.ty + ")" })
 .html("&#xf00c; ");
+
+
+svg.selectAll("text.labels")
+.data(circles)
+.enter()
+.append("text")
+.attr("x", cx)
+.attr("y", cy-10)
+.attr("dy", "1em")
+.attr("text-anchor", "middle")
+.attr("text-decoration", "underline")
+.attr("transform", function(d){
+  let x= d.tx;
+  let y = d.ty;
+  if(x==0)
+    y= d.ty+30;
+  else if(x<0)
+  x= d.tx-50;
+  else 
+  x= d.tx+50;
+  return "translate(" + x + "," + y + ")" 
+  })
+.text(function(d){return d.text});
+    
     
 function appendArcs(arcData, start, end,  color, outerRadius, stroke){
       arcData.push({"start":start, "end":end, "color":color, "outerRadius":outerRadius,"stroke":stroke})
 
 }
 
-    </script>
+</script>
   </body>
 
 </html>
