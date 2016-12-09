@@ -30,132 +30,430 @@
   <body>
     <script type="text/javascript" src="http://d3js.org/d3.v2.min.js?2.9.6"></script>
     <script type="text/javascript">
-     let width = 400,
-        height = 400,
-        margin = 170,
-        outerRadius = Math.min(width - margin, height - margin) / 2,  
-        innerRadius = Math.min(width - margin, height - margin) / 8,  
-        colors = d3.scale.category20(),
-        noOfArcs= 7,
-        minArcRadius= 20,
-        fillColor="#EDEDED",
-        stroke="#FCFCFC",
-        completeColor= "#008580",
-        strokeWidth="2",
-        cScale = d3.scale.linear().domain([0, (noOfArcs*minArcRadius)]).range([0, 2 * Math.PI]),
-        cx = (width/2 + ((outerRadius) * Math.sin(0))),
-        cy = (height/2 - ((outerRadius) * Math.cos(0))),
-        cp=360/noOfArcs,
-        cr=15,
-        arcData= [],
-        circles= [];
-  
-  for(i = 0; i++ < noOfArcs; ){
-      let j= i +1;
-     appendArcs(arcData,i*minArcRadius,j*minArcRadius,stroke,outerRadius+5, fillColor)
-     appendArcs(arcData,i*minArcRadius,j*minArcRadius,fillColor,outerRadius, stroke)
-  }
+class ProductModel {
 
-//append Children
-      appendArcs(arcData,80,100,completeColor,outerRadius);
-      
-//50,10
-//-50,10
-//110,90
-//-110,90
-//-90,190
-//0,230
-circles.push({"tx":50,"ty":10,"color":"white","text":"Test 7"});
-circles.push({"tx":-50,"ty":10,"color":"white","text":"Test 5"});
-circles.push({"tx":110,"ty":90,"color":"white","text":"Test 6"});
-circles.push({"tx":-110,"ty":90,"color":"white","text":"Test1"});
-circles.push({"tx":90,"ty":190,"color":"white","text":"Test 2"});
-circles.push({"tx":-90,"ty":190,"color":"white","text":"Test 4"});
-circles.push({"tx":0,"ty":230,"color":"white","text":"Test 5"});
-
-let arc = d3.svg.arc()
-.innerRadius(innerRadius)
-.outerRadius(function(d){return  d.outerRadius;})
-.startAngle(function(d){  return cScale(d.start);})
-.endAngle(function(d){  return cScale(d.end);});
-
- 
- 
-let svg = d3.select("body")
-            .append("svg")
-            .attr("width", width)
-             .attr("height", height);
-
-
-svg.selectAll("path")
-    .data(arcData)
-    .enter()
-    .append("path")
-    .attr("d", arc)
-    .style({"stroke": function(d) {
-      return d.stroke;
-    }, "stroke-width": strokeWidth, "fill":function(d){return d.color;}})
-    .attr("transform", "translate(" + (width / 2) + "," + (height / 2) + ")");
-
-
-svg.selectAll("circle")
-.data(circles)
-.enter().
-append('circle')
-.attr({
-    cx:cx,
-    cy:cy,
-    r: cr,
-    fill: function(d) {return d.color},
-    stroke: fillColor,
-   transform: function(d){return "translate(" + d.tx + "," + d.ty + ")" }
-});
-
-
-svg.selectAll("text")
-.data(circles)
-.enter()
-.append("text")
-.attr("x", cx)
-.attr("y", cy-10)
-.attr("dy", "1em")
-.attr("text-anchor", "middle")
-.attr('font-family', 'FontAwesome') 
-.attr('font-size',"1em")
-.attr("fill", "red")
-.attr("transform", function(d){return "translate(" + d.tx + "," + d.ty + ")" })
-.html("&#xf00c; ");
-
-
-svg.selectAll("text.labels")
-.data(circles)
-.enter()
-.append("text")
-.attr("x", cx)
-.attr("y", cy-10)
-.attr("dy", "1em")
-.attr("text-anchor", "middle")
-.attr("text-decoration", "underline")
-.attr("transform", function(d){
-  let x= d.tx;
-  let y = d.ty;
-  if(x==0)
-    y= d.ty+30;
-  else if(x<0)
-  x= d.tx-50;
-  else 
-  x= d.tx+50;
-  return "translate(" + x + "," + y + ")" 
-  })
-.text(function(d){return d.text});
-    
-    
-function appendArcs(arcData, start, end,  color, outerRadius, stroke){
-      arcData.push({"start":start, "end":end, "color":color, "outerRadius":outerRadius,"stroke":stroke})
-
+    constructor(id, text, percentComplete = 0, completed = false, hasError = false, hasWarning = false) {
+        this.id = id;
+        this.text = text;
+        this.percentComplete = percentComplete;
+        this.completed = completed;
+        this.hasError = hasError;
+        this.hasWarning = hasWarning;
+    }
 }
 
-</script>
+class PlotWheel {
+    constructor(element, prodcuts, clickCallback) {
+        this.element = element
+            ? element
+            : 'body';
+        this.products = prodcuts;
+        this.width = 400;
+        this.height = 400;
+        this.margin = 170;
+        this.outerRadius = Math.min(this.width - this.margin, this.height - this.margin) / 2;
+        this.innerRadius = Math.min(this.width - this.margin, this.height - this.margin) / 8;
+        this.fillColor = "#EDEDED";
+        this.stroke = "#FCFCFC";
+        this.completeColor = "#008580";
+        this.errorColor = "red";
+        this.warningColor = "orange";
+        this.strokeWidth = "2";
+        this.cx = (this.width / 2 + ((this.outerRadius) * Math.sin(0))),
+        this.cy = (this.height / 2 - ((this.outerRadius) * Math.cos(0))),
+        this.successIcon = '&#xf00c;';
+        this.errorIcon = '&#xf00d;';
+        this.warningIcon = '&#xf12a;';
+        this.cr = 15;
+        this.clickCallback = clickCallback;
+        this.svg = this.createSvg();
+        this.arcData = [];
+        this.prodctRenderData = [];
+        this.createArcData();
+        this.createProductRenderData();
+        this.drawArcs();
+        this.drawButtons();
+        this.drawProductLabels();
+
+    }
+
+    createSvg() {
+        return d3
+            .select(this.element)
+            .append("svg")
+            .attr("width", this.width)
+            .attr("height", this.height);
+    }
+
+    get arc() {
+        return d3
+            .svg
+            .arc()
+            .innerRadius(this.innerRadius)
+            .outerRadius(function (d) {
+                return d.outerRadius;
+            })
+            .startAngle(function (d) {
+                return d.start;
+            })
+            .endAngle(function (d) {
+                return d.end;
+            });
+    }
+
+    createArcData() {
+        let part = (2 * Math.PI) / this.products.length;
+        for (let i = 0; i < this.products.length; i++) {
+            let j = i + 1;
+            let product = this.products[i];
+            this.appendArcs(product.id, i * part, j * part, this.stroke, this.outerRadius + 5, this.fillColor);
+            let color = this.fillColor;
+            let or = this.outerRadius;
+            if (product.completed) {
+                color = this.completeColor;
+            } else if (product.hasError) {
+                color = this.errorColor;
+            } else if (product.hasWarning) {
+                color = this.warningColor;
+            }
+            if (product.percentComplete) {
+                or = or * product.percentComplete;
+            }
+            this.appendArcs(product.id, i * part, j * part, color, or, this.stroke);
+        }
+    }
+
+    drawArcs() {
+        let cls = this;
+        this
+            .svg
+            .selectAll("path")
+            .data(this.arcData)
+            .enter()
+            .append("path")
+            .attr("d", this.arc)
+            .style({
+                "stroke": function (d) {
+                    return d.stroke;
+                },
+                "stroke-width": this.strokeWidth,
+                "fill": function (d) {
+                    return d.color;
+                }
+            })
+            .attr("transform", "translate(" + (this.width / 2) + "," + (this.height / 2) + ")")
+            .on("click", function (d) {
+                cls.clickCallback(d);
+            });
+    }
+
+    appendArcs(id, start, end, color, outerRadius, stroke) {
+        this
+            .arcData
+            .push({
+                "id": id,
+                "start": start,
+                "end": end,
+                "color": color,
+                "outerRadius": outerRadius,
+                "stroke": stroke
+            })
+    }
+
+    updateProduct(product) {
+        let arc = this
+            .arcData
+            .find(y => {
+                return y.id === product.id;
+            });
+        let id = this.guid();
+        let color = arc.color;
+        let or = arc.outerRadius;
+        if (product.completed) {
+            color = this.completeColor;
+        } else if (product.hasError) {
+            color = this.errorColor;
+        } else if (product.hasWarning) {
+            color = this.warningColor;
+        }
+        if (product.percentComplete) {
+            or = or * product.percentComplete;
+        }
+        this.appendArcs(id, arc.start, arc.end, color, or);
+        this.drawArcs();
+        this.updateButtoncolor();
+    }
+
+    createProductRenderData() {
+
+        // TODO: remove hard coding of axis
+
+        if (this.products.length == 7) {
+            this
+                .prodctRenderData
+                .push({
+                    "tx": 55,
+                    "ty": 10,
+                    "color": "white",
+                    "text": this.products[0].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[0].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": 120,
+                    "ty": 90,
+                    "color": "white",
+                    "text": this.products[1].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[1].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": 90,
+                    "ty": 180,
+                    "color": "white",
+                    "text": this.products[2].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[2].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": 0,
+                    "ty": 230,
+                    "color": "white",
+                    "text": this.products[3].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[3].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": -90,
+                    "ty": 180,
+                    "color": "white",
+                    "text": this.products[4].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[4].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": -120,
+                    "ty": 90,
+                    "color": "white",
+                    "text": this.products[5].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[5].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": -50,
+                    "ty": 10,
+                    "color": "white",
+                    "text": this.products[6].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[6].id
+                });
+        } else if (this.products.length == 6) {
+            this
+                .prodctRenderData
+                .push({
+                    "tx": 55,
+                    "ty": 10,
+                    "color": "white",
+                    "text": this.products[0].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[0].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": 120,
+                    "ty": 115,
+                    "color": "white",
+                    "text": this.products[1].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[1].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": 55,
+                    "ty": 220,
+                    "color": "white",
+                    "text": this.products[2].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[2].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": -55,
+                    "ty": 220,
+                    "color": "white",
+                    "text": this.products[3].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[3].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": -120,
+                    "ty": 115,
+                    "color": "white",
+                    "text": this.products[4].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[4].id
+                });
+            this
+                .prodctRenderData
+                .push({
+                    "tx": -55,
+                    "ty": 10,
+                    "color": "white",
+                    "text": this.products[5].text,
+                    "icon": this.successIcon,
+                    "pid": this.products[5].id
+                });
+        }
+        this.updateButtoncolor();
+    }
+
+    updateButtoncolor() {
+        let cls = this;
+        this
+            .products
+            .forEach(p => {
+                cls
+                    .prodctRenderData
+                    .forEach(c => {
+
+                        if (p.id === c.pid) {
+                            if (p.completed) {
+                                c.color = cls.completeColor;
+                            } else if (p.hasError) {
+                                c.color = cls.errorColor;
+                                c.icon = cls.errorIcon;
+                            } else if (p.hasWarning) {
+                                c.color = cls.warningColor;
+                                c.icon = cls.warningIcon;
+
+                            }
+                        }
+
+                    })
+            })
+    }
+    drawProductLabels() {
+        this
+            .svg
+            .selectAll("text.labels")
+            .data(this.prodctRenderData)
+            .enter()
+            .append("text")
+            .attr("x", this.cx)
+            .attr("y", this.cy - 10)
+            .attr("dy", "1em")
+            .attr("text-anchor", "middle")
+            .attr("text-decoration", "underline")
+            .attr("transform", function (d) {
+                let x = d.tx;
+                let y = d.ty;
+                if (x == 0) 
+                    y = d.ty + 30;
+                else if (x < 0) 
+                    x = d.tx - 50;
+                else 
+                    x = d.tx + 50;
+                return "translate(" + x + "," + y + ")"
+            })
+            .text(function (d) {
+                return d.text
+            });
+    }
+
+    drawButtons() {
+        this
+            .svg
+            .selectAll("circle")
+            .data(this.prodctRenderData)
+            .enter()
+            .append('circle')
+            .attr({
+                cx: this.cx,
+                cy: this.cy,
+                r: this.cr,
+                fill: function (d) {
+                    return d.color
+                },
+                stroke: this.fillColor,
+                transform: function (d) {
+                    return "translate(" + d.tx + "," + d.ty + ")"
+                }
+            });
+
+        let self = this;
+
+        this
+            .svg
+            .selectAll("text")
+            .data(this.prodctRenderData)
+            .enter()
+            .append("text")
+            .attr("x", this.cx)
+            .attr("y", this.cy - 10)
+            .attr("dy", "1em")
+            .attr("text-anchor", "middle")
+            .attr('font-family', 'FontAwesome')
+            .attr('font-size', "1em")
+            .attr("fill", function (d) {
+                if (d.color == this.completeColor) {
+                    return self.completeColor;
+                } else {
+                    return self.fillColor;
+                }
+            })
+            .attr("transform", function (d) {
+                return "translate(" + d.tx + "," + d.ty + ")"
+            })
+            .html(function (d) {
+                return d.icon;
+            });
+
+    }
+    guid() {
+        function s4() {
+            return Math.floor((1 + Math.random()) * 0x10000)
+                .toString(16)
+                .substring(1);
+        }
+        return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+    }
+}
+// 6 products
+let c = new ProductModel('credit', 'Credit');
+let products = [
+    c,
+    new ProductModel('ao', 'A//O', null, 1, true),
+    new ProductModel('glcm', 'GLCM'),
+    new ProductModel('fx', 'FX'),
+    new ProductModel('gtrf', 'GTRF'),
+    new ProductModel('kyc', 'KYC')
+];
+// 7 products let products  = [ new ProductModel('credit','Credit'), new
+// ProductModel('ao','A//O'), new ProductModel('glcm','GLCM'),new
+// ProductModel('cl','CL') ,new ProductModel('fx','FX'), new
+// ProductModel('gtrf','GTRF'), new ProductModel('kyc','KYC')];
+let plotwhel = new PlotWheel('body', products);
+plotwhel.updateProduct(new ProductModel('credit', 'Credit', 0.7, true))
+   
+
+    </script>
   </body>
 
 </html>
